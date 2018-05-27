@@ -1,7 +1,9 @@
-function hello(name) {
-  return `Hi, ${name}`
+class TZVersion {
+  constructor(name, version, url = "foo") {
+    this.name = name
+    this.version = version
+    this.url = url
+  }
 }
 
-const message = hello('A0')
-
-console.log(message)
+export { TZVersion }
