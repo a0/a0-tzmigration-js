@@ -1,0 +1,26 @@
+{
+  "name": "a0-tzmigration-js",
+  "version": "0.1.0",
+  "description": "A NPM package that helps migration between timezone changes when they happen in the tzdata/zoneinfo/Olson database",
+  "main": "build/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/a0/a0-tzmigration-js.git"
+  },
+  "keywords": [
+    "npm",
+    "node",
+    "tz",
+    "timezone",
+    "migration"
+  ],
+  "author": "Aldrin Martoq",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/a0/a0-tzmigration-js/issues"
+  },
+  "homepage": "https://github.com/a0/a0-tzmigration-js#readme"
+}
