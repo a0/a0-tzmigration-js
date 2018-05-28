@@ -15,15 +15,21 @@ test('versions', async () => {
   expect(versions['2013c'].timezones).toEqual(expect.arrayContaining(['America/Santiago', 'Zulu']))
 })
 
-test('fetch timezone version', async () => {
+test('can fetch a timezone version', async () => {
   const data = await new TZVersion().fetch('America/Santiago', '2018e')
   expect(data.released_at).toEqual('2018-05-01 23:42:51 -0700')
 })
 
-test('fetch aliased timezone version', async () => {
+test('throws error if version was not found', async () => {
   let tzversion = new TZVersion()
-  const data = await tzversion.fetch('America/Caracas', '2018e')
-  expect(data.released_at).toEqual('2018-05-01 23:42:51 -0700')
+  await expect(tzversion.fetch('America/Santiago', '1990a')).rejects.toThrow('Version 1990a not found')
+})
+
+test('can fetch aliased timezone version', async () => {
+  let tzversion = new TZVersion()
+  const data_a = await tzversion.fetch('America/Santiago', '2018e')
+  const data_b = await tzversion.fetch('Chile/Continental', '2018e')
+  expect(data_a).toEqual(data_b)
 })
 
 test('returns an empty list for America/Santiago between 2014i 2014j versions', async () => {

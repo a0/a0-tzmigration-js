@@ -5,10 +5,6 @@ class TZVersion {
     this.base_url = base_url
   }
 
-  convert_date(object, key) {
-    object[key] = new Date(object[key])
-  }
-
   fetch(name, version) {
     this.name = name
     this.version = version
@@ -16,7 +12,7 @@ class TZVersion {
       axios.get(this.base_url + 'timezones/' + name + '.json').then(response => {
         this.data = response.data
         if (!(version in response.data.versions)) {
-          throw `Version ${version} not found`
+          throw new Error(`Version ${version} not found`)
         }
 
         let version_data = response.data.versions[version]
