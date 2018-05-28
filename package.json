@@ -6,7 +6,8 @@
   "scripts": {
     "build": "yarn lint && babel src -d lib",
     "lint": "eslint src",
-    "test": "jest"
+    "test": "jest",
+    "prepublishOnly": "yarn build"
   },
   "repository": {
     "type": "git",
