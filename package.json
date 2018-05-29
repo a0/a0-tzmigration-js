@@ -2,7 +2,7 @@
   "name": "a0-tzmigration-js",
   "version": "0.1.0",
   "description": "A NPM package that helps migration between timezone changes when they happen in the tzdata/zoneinfo/Olson database",
-  "main": "build/index.js",
+  "main": "lib/index.js",
   "scripts": {
     "build": "yarn lint && babel src -d lib",
     "lint": "eslint src",

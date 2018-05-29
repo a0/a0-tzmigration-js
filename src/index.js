@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 class TZVersion {
-  constructor(base_url = "https://a0.github.com/a0-tzmigration-ruby/data/") {
+  constructor(base_url = "https://a0.github.io/a0-tzmigration-ruby/data/") {
     this.base_url = base_url
   }
 
