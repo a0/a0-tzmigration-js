@@ -1,140 +1,152 @@
 import axios from 'axios'
+import util from './util'
+import { version } from '../package.json'
+
+const config = {
+  base_url: 'https://a0.github.io/a0-tzmigration-ruby/data/'
+}
 
 class TZVersion {
-  constructor(base_url = "https://a0.github.io/a0-tzmigration-ruby/data/") {
-    this.base_url = base_url
-  }
-
-  fetch(name, version) {
+  constructor(name, version) {
     this.name = name
     this.version = version
-    return new Promise((resolve, reject) => {
-      axios.get(this.base_url + 'timezones/' + name + '.json').then(response => {
-        this.data = response.data
-        if (!(version in response.data.versions)) {
-          throw new Error(`Version ${version} not found`)
-        }
-
-        let version_data = response.data.versions[version]
-        if (version_data.alias) {
-          this.fetch(version_data.alias, version).then(resolve).catch(reject)
-        } else {
-          resolve(version_data)
-        }
-      }).catch(reject)
-    })
+    this.cache = {}
   }
 
-  timestamps(version_data) {
-    let result = []
+  async data() {
+    if (!this.cache.data) {
+      let response = await axios.get(config.base_url + 'timezones/' + this.name + '.json')
 
-    result.push(-Infinity)
-    version_data.transitions.forEach(transition => {
-      result.push(transition.utc_timestamp)
-    })
-    result.push(Infinity)
-
-    return result
-  }
-
-  timezone_ranges(version_data) {
-    let ini = -Infinity
-    let fin = Infinity
-
-    let ranges = []
-    version_data.transitions.forEach(transition => {
-      ranges.push({ ini: ini, fin: (ini = transition.utc_timestamp), off: transition.utc_prev_offset })
-    })
-
-    if (ranges.length > 0) {
-      let last = ranges[ranges.length - 1]
-      ranges.push({ ini: last.fin, fin: fin, off: version_data.transitions[version_data.transitions.length - 1].utc_offset })
+      this.cache.data = response.data
     }
 
-    return ranges
+    return this.cache.data
   }
 
-  next_index(index, ranges, timestamp) {
-    while (((index + 1) < ranges.length) && (ranges[index].ini < timestamp) && (ranges[index].fin <= timestamp)) {
-      index += 1
+  async version_data() {
+    if (!this.cache.version_data) {
+      let data = await this.data()
+
+      if (!(this.version in data.versions)) {
+        throw new Error(`Version ${this.version} not found for ${this.name}.`)
+      }
+
+      let version_data = data.versions[this.version]
+      if (version_data.alias) {
+        this.cache.link = new TZVersion(version_data.alias, this.version)
+        version_data = await this.cache.link.version_data()
+      }
+
+      this.cache.version_data = version_data
     }
 
-    return index
+    return this.cache.version_data
   }
 
-  split_range_list(ranges, timestamps) {
-    let index = this.next_index(0, ranges, timestamps[0])
+  async released_at() {
+    if (!this.cache.released_at) {
+      let version_data = await this.version_data()
 
-    timestamps.forEach((timestamp, timestamp_index) => {
-      let range = ranges[index]
+      this.cache.released_at = version_data.released_at
+    }
 
-      if (timestamp > range.ini && timestamp < range.fin && index < ranges.length) {
-        ranges.splice(index + 1, 0, Object.assign({}, range, { ini: timestamp }))
-        ranges[index].fin = timestamp
-      }
-
-      if (timestamp_index + 1 < timestamps.length) {
-        index = this.next_index(index, ranges, timestamps[timestamp_index + 1])
-      }
-    })
-
-    return ranges
+    return this.cache.released_at
   }
 
-  compact_ranges(ranges) {
-    let index = 0
+  async transitions() {
+    if (!this.cache.transitions) {
+      let version_data = await this.version_data()
 
-    while (index < ranges.length) {
-      let curr = ranges[index]
-      let next = ranges[index + 1]
+      this.cache.transitions = version_data.transitions
+    }
 
-      if (next && curr.fin == next.ini && curr.off == next.off) {
-        curr.fin = next.fin
-        ranges.splice(index + 1, 1)
+    return this.cache.transitions
+  }
+
+  async transition_ranges() {
+    if (!this.cache.transition_ranges) {
+      let transitions = await this.transitions()
+
+      let ini = -Infinity
+      let fin = Infinity
+  
+      if (transitions.length == 0) {
+        this.cache.transition_ranges = [util.range_item(ini, fin, 0)]
       } else {
-        index += 1
+        let ranges = transitions.map(transition => {
+          return util.range_item(ini, (ini = transition.utc_timestamp), transition.utc_prev_offset)
+        })
+
+        ranges.push(util.range_item(ranges[ranges.length - 1].fin, fin, transitions[transitions.length - 1].utc_offset))
+
+        this.cache.transition_ranges = ranges
       }
     }
 
-    return ranges
+    return this.cache.transition_ranges
   }
 
-  delta_ranges(a, b) {
-    let timestamps_a = this.timestamps(a)
-    let timestamps_b = this.timestamps(b)
+  async timestamps() {
+    if (!this.cache.timestamps) {
+      let transitions = await this.transitions()
+
+      let timestamps = []
+      timestamps.push(-Infinity)
+      transitions.forEach(transition => {
+        timestamps.push(transition.utc_timestamp)
+      })
+      timestamps.push(Infinity)
+  
+      this.cache.timestamps = timestamps
+    }
+
+    return this.cache.timestamps
+  }
+
+  async changes(other) {
+    let timestamps_a = await this.timestamps()
+    let timestamps_b = await other.timestamps()
+
     let timestamps = timestamps_a.concat(timestamps_b).sort( (a, b) => a - b).filter((item, index, array) => {
       return index == array.length -1 || array[index+ 1] != item
     })
 
-    let list_a = this.split_range_list(this.timezone_ranges(a), timestamps)
-    let list_b = this.split_range_list(this.timezone_ranges(b), timestamps)
+    let transition_ranges_a = await this.transition_ranges()
+    let transition_ranges_b = await other.transition_ranges()
 
-    let delta = []
+    let list_a = util.split_ranges(transition_ranges_a, timestamps)
+    let list_b = util.split_ranges(transition_ranges_b, timestamps)
+
+    let changes = []
     list_a.forEach((range_a, index) => {
       let range_b = list_b[index]
 
       if (range_a.off != range_b.off) {
-        delta.push({ ini: range_a.ini, fin: range_a.fin, off: range_b.off - range_a.off })
+        changes.push(util.range_item(range_a.ini, range_a.fin, range_b.off - range_a.off))
       }
     })
 
-    return this.compact_ranges(delta)
+    return util.compact_ranges(changes)
   }
 
-  timezones() {
-    return new Promise((resolve, reject) => {
-      axios.get(this.base_url + 'timezones/00-index.json').then(response => {
-        resolve(response.data.timezones)
-      }).catch(reject)
-    })
+  static async versions() {
+    let response = await axios.get(config.base_url + 'versions/00-index.json')
+
+    return response.data.versions
   }
 
-  versions() {
-    return new Promise((resolve, reject) => {
-      axios.get(this.base_url + 'versions/00-index.json').then(response => {
-        resolve(response.data.versions)
-      }).catch(reject)
-    })
+  static async timezones() {
+    let response = await axios.get(config.base_url + 'timezones/00-index.json')
+
+    return response.data.timezones
+  }
+
+  static get config() {
+    return config
+  }
+
+  static get VERSION() {
+    return version
   }
 }
 
