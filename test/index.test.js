@@ -13,7 +13,7 @@ function expect_eq_not_null(value_a, value_b) {
 
 test('has a version number', () => {
   expect(TZVersion.VERSION).not.toBeFalsy()
-  expect(TZVersion.VERSION).toEqual('0.1.1')
+  expect(TZVersion.VERSION).toEqual('1.0.0')
 })
 
 test('can load version index', async () => {
