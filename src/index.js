@@ -1,3 +1,5 @@
+import regeneratorRuntime from "regenerator-runtime" // eslint-disable-line no-unused-vars
+
 import axios from 'axios'
 import util from './util'
 import { version } from '../package.json'
