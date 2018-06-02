@@ -52,6 +52,7 @@ export default {
     return index
   },
   split_ranges(ranges, timestamps) {
+    ranges = ranges.map(x => Object.assign({}, x))
     let index = this.next_index(0, ranges, timestamps[0])
 
     timestamps.forEach((timestamp, timestamp_index) => {
